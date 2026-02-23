@@ -1,4 +1,21 @@
-from fastapi import FastAPI, Response, status
+import json
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+from fastapi import FastAPI, HTTPException, Response, status
+
+SLACK_WEBHOOK_LOG_FILE = Path("webhook_events.log")
+
+
+def append_slack_webhook_log(payload: dict[str, Any]) -> None:
+    log_entry = {
+        "received_at": datetime.now(UTC).isoformat(),
+        "payload": payload,
+    }
+    with SLACK_WEBHOOK_LOG_FILE.open("a", encoding="utf-8") as log_file:
+        log_file.write(json.dumps(log_entry, ensure_ascii=False))
+        log_file.write("\n")
 
 
 def create_app() -> FastAPI:
@@ -11,6 +28,25 @@ def create_app() -> FastAPI:
     @app.head("/health", status_code=status.HTTP_200_OK, tags=["health"])
     async def health_check_head() -> Response:
         return Response(status_code=status.HTTP_200_OK)
+
+    @app.post("/webhook", tags=["slack"])
+    async def slack_webhook(payload: dict[str, Any]) -> dict[str, Any]:
+        append_slack_webhook_log(payload)
+
+        event_type = payload.get("type")
+
+        # Slack URL verification handshake: echo back the challenge value.
+        if event_type == "url_verification":
+            challenge = payload.get("challenge")
+            if not isinstance(challenge, str) or not challenge:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Missing or invalid challenge",
+                )
+            return {"challenge": challenge}
+
+        # Acknowledge event callbacks quickly so Slack doesn't retry.
+        return {"ok": True}
 
     return app
 
