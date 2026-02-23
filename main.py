@@ -47,9 +47,7 @@ def format_slack_template(payload: dict[str, Any]) -> str:
         text_value = text.strip()
 
     return (
-        f"[{timestamp}] Product: {product}\n"
-        f"Status: {status_value}\n"
-        f"Text: {text_value}"
+        f"[{timestamp}] Product: {product}\nStatus: {status_value}\nText: {text_value}"
     )
 
 
