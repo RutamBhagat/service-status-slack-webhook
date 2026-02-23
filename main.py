@@ -42,6 +42,21 @@ def format_slack_template(payload: dict[str, Any]) -> str:
     )
 
 
+def format_atlassian_template(payload: dict[str, Any]) -> str:
+    page = payload["page"]
+    component = payload["component"]
+    component_update = payload["component_update"]
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+
+    return (
+        f"[{timestamp}] Product: {component['name']}\n"
+        f"Status: {component_update['new_status']} "
+        f"(old={component_update['old_status']}), "
+        f"page={page['status_description']}, "
+        f"component={component['status']}"
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI()
 
@@ -72,6 +87,8 @@ def create_app() -> FastAPI:
 
         if payload_type == "slack":
             return {"ok": True, "message": format_slack_template(payload)}
+        if payload_type == "atlassian":
+            return {"ok": True, "message": format_atlassian_template(payload)}
 
         # Acknowledge event callbacks quickly so Slack doesn't retry.
         return {"ok": True}
