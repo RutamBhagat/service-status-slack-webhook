@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: service-status-slack-webhook
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    healthCheckPath: /health

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.venv/
+.git/
+incident.log
+webhook_events.log
