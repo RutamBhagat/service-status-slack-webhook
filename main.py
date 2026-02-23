@@ -36,32 +36,55 @@ def classify_webhook_payload(payload: dict[str, Any]) -> str:
 
 
 def format_slack_template(payload: dict[str, Any]) -> str:
-    block = payload["event"]["blocks"][-1]
-    section = block["elements"][-1]
-    last_item = section["elements"][-1]
+    event = payload["event"]
+    message = event["message"] if event.get("subtype") == "message_changed" else event
+    text = message.get("text", "")
+    lines = text.splitlines()
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
 
+    product = message.get("username", "Unknown")
+    if len(lines) > 1 and lines[1].strip():
+        product = lines[1].strip()
+
+    status_value = "Unknown"
+    for line in lines:
+        if line.strip().startswith("Status:"):
+            status_value = line.split("Status:", 1)[1].strip()
+            break
+
     return (
-        f"[{timestamp}] Product: {last_item.get('text', '')}\n"
-        f"Status: type={last_item.get('type', '')}, "
-        f"name={last_item.get('name', '')}, "
-        f"unicode={last_item.get('unicode', '')}, "
-        f"url={last_item.get('url', '')}"
+        f"[{timestamp}] Product: {product}\n"
+        f"Status: {status_value}"
     )
 
 
 def format_atlassian_template(payload: dict[str, Any]) -> str:
-    page = payload["page"]
-    component = payload["component"]
-    component_update = payload["component_update"]
+    page = payload.get("page", {})
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
 
+    if payload.get("component") and payload.get("component_update"):
+        component = payload["component"]
+        component_update = payload["component_update"]
+        return (
+            f"[{timestamp}] Product: {component.get('name', 'Unknown')}\n"
+            f"Status: {component_update.get('new_status', 'unknown')} "
+            f"(old={component_update.get('old_status', 'unknown')})"
+        )
+
+    if payload.get("incident"):
+        incident = payload["incident"]
+        components = incident.get("components", [])
+        product = incident.get("name", "Unknown")
+        if components:
+            product = components[0].get("name", product)
+        return (
+            f"[{timestamp}] Product: {product}\n"
+            f"Status: {incident.get('status', 'unknown')}"
+        )
+
     return (
-        f"[{timestamp}] Product: {component['name']}\n"
-        f"Status: {component_update['new_status']} "
-        f"(old={component_update['old_status']}), "
-        f"page={page['status_description']}, "
-        f"component={component['status']}"
+        f"[{timestamp}] Product: {page.get('id', 'Unknown')}\n"
+        f"Status: {page.get('status_description', 'unknown')}"
     )
 
 
