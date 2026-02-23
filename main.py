@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Response, status
 
 SLACK_WEBHOOK_LOG_FILE = Path("webhook_events.log")
+INCIDENT_LOG_FILE = Path("incident.log")
 
 
 def append_slack_webhook_log(payload: dict[str, Any]) -> None:
@@ -15,6 +16,12 @@ def append_slack_webhook_log(payload: dict[str, Any]) -> None:
     }
     with SLACK_WEBHOOK_LOG_FILE.open("a", encoding="utf-8") as log_file:
         log_file.write(json.dumps(log_entry, ensure_ascii=False))
+        log_file.write("\n")
+
+
+def append_incident_log(message: str) -> None:
+    with INCIDENT_LOG_FILE.open("a", encoding="utf-8") as log_file:
+        log_file.write(message)
         log_file.write("\n")
 
 
@@ -86,9 +93,9 @@ def create_app() -> FastAPI:
             return {"challenge": challenge}
 
         if payload_type == "slack":
-            return {"ok": True, "message": format_slack_template(payload)}
+            append_incident_log(format_slack_template(payload))
         if payload_type == "atlassian":
-            return {"ok": True, "message": format_atlassian_template(payload)}
+            append_incident_log(format_atlassian_template(payload))
 
         # Acknowledge event callbacks quickly so Slack doesn't retry.
         return {"ok": True}
