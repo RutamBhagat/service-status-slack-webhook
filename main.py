@@ -27,6 +27,21 @@ def classify_webhook_payload(payload: dict[str, Any]) -> str:
         return "unknown"
 
 
+def format_slack_template(payload: dict[str, Any]) -> str:
+    block = payload["event"]["blocks"][-1]
+    section = block["elements"][-1]
+    last_item = section["elements"][-1]
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+
+    return (
+        f"[{timestamp}] Product: {last_item.get('text', '')}\n"
+        f"Status: type={last_item.get('type', '')}, "
+        f"name={last_item.get('name', '')}, "
+        f"unicode={last_item.get('unicode', '')}, "
+        f"url={last_item.get('url', '')}"
+    )
+
+
 def create_app() -> FastAPI:
     app = FastAPI()
 
@@ -54,6 +69,9 @@ def create_app() -> FastAPI:
                     detail="Missing or invalid challenge",
                 )
             return {"challenge": challenge}
+
+        if payload_type == "slack":
+            return {"ok": True, "message": format_slack_template(payload)}
 
         # Acknowledge event callbacks quickly so Slack doesn't retry.
         return {"ok": True}
