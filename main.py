@@ -38,19 +38,17 @@ def classify_webhook_payload(payload: dict[str, Any]) -> str:
 def format_slack_template(payload: dict[str, Any]) -> str:
     event = payload["event"]
     message = event["message"] if event.get("subtype") == "message_changed" else event
-    text = message.get("text", "")
-    lines = text.splitlines()
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+    text = message.get("text", "")
 
-    product = message.get("username", "Unknown")
-    if len(lines) > 1 and lines[1].strip():
-        product = lines[1].strip()
-
-    status_value = "Unknown"
-    for line in lines:
+    product = message.get("username", "Slack")
+    status_value = ""
+    for line in text.splitlines():
         if line.strip().startswith("Status:"):
             status_value = line.split("Status:", 1)[1].strip()
             break
+    if not status_value:
+        status_value = message.get("subtype", event.get("type", "message"))
 
     return (
         f"[{timestamp}] Product: {product}\n"
@@ -59,7 +57,6 @@ def format_slack_template(payload: dict[str, Any]) -> str:
 
 
 def format_atlassian_template(payload: dict[str, Any]) -> str:
-    page = payload.get("page", {})
     timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
 
     if payload.get("component") and payload.get("component_update"):
@@ -67,25 +64,17 @@ def format_atlassian_template(payload: dict[str, Any]) -> str:
         component_update = payload["component_update"]
         return (
             f"[{timestamp}] Product: {component.get('name', 'Unknown')}\n"
-            f"Status: {component_update.get('new_status', 'unknown')} "
-            f"(old={component_update.get('old_status', 'unknown')})"
+            f"Status: {component_update.get('new_status', 'unknown')}"
         )
 
     if payload.get("incident"):
         incident = payload["incident"]
-        components = incident.get("components", [])
-        product = incident.get("name", "Unknown")
-        if components:
-            product = components[0].get("name", product)
         return (
-            f"[{timestamp}] Product: {product}\n"
+            f"[{timestamp}] Product: {incident.get('name', 'Unknown')}\n"
             f"Status: {incident.get('status', 'unknown')}"
         )
 
-    return (
-        f"[{timestamp}] Product: {page.get('id', 'Unknown')}\n"
-        f"Status: {page.get('status_description', 'unknown')}"
-    )
+    return f"[{timestamp}] Product: Atlassian\nStatus: unknown"
 
 
 def create_app() -> FastAPI:
