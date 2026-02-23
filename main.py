@@ -1,4 +1,3 @@
-import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -6,18 +5,7 @@ from typing import Any
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import PlainTextResponse
 
-SLACK_WEBHOOK_LOG_FILE = Path("webhook_events.log")
 INCIDENT_LOG_FILE = Path("incident.log")
-
-
-def append_slack_webhook_log(payload: dict[str, Any]) -> None:
-    log_entry = {
-        "received_at": datetime.now(UTC).isoformat(),
-        "payload": payload,
-    }
-    with SLACK_WEBHOOK_LOG_FILE.open("a", encoding="utf-8") as log_file:
-        log_file.write(json.dumps(log_entry, ensure_ascii=False))
-        log_file.write("\n")
 
 
 def append_incident_log(message: str) -> None:
@@ -112,7 +100,6 @@ def create_app() -> FastAPI:
 
     @app.post("/webhook", tags=["slack"])
     async def slack_webhook(payload: dict[str, Any]) -> dict[str, Any]:
-        append_slack_webhook_log(payload)
         event_type = payload.get("type")
 
         # Slack URL verification handshake: echo back the challenge value.
