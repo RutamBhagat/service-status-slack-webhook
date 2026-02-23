@@ -43,16 +43,25 @@ def format_slack_template(payload: dict[str, Any]) -> str:
 
     product = message.get("username", "Slack")
     status_value = ""
-    for line in text.splitlines():
+    text_value = ""
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
         if line.strip().startswith("Status:"):
             status_value = line.split("Status:", 1)[1].strip()
+            for next_line in lines[index + 1 :]:
+                if next_line.strip():
+                    text_value = next_line.strip()
+                    break
             break
     if not status_value:
         status_value = message.get("subtype", event.get("type", "message"))
+    if not text_value:
+        text_value = text.strip()
 
     return (
         f"[{timestamp}] Product: {product}\n"
-        f"Status: {status_value}"
+        f"Status: {status_value}\n"
+        f"Text: {text_value}"
     )
 
 
@@ -64,17 +73,24 @@ def format_atlassian_template(payload: dict[str, Any]) -> str:
         component_update = payload["component_update"]
         return (
             f"[{timestamp}] Product: {component.get('name', 'Unknown')}\n"
-            f"Status: {component_update.get('new_status', 'unknown')}"
+            f"Status: {component_update.get('new_status', 'unknown')}\n"
+            f"Text: {component_update.get('old_status', 'unknown')} -> "
+            f"{component_update.get('new_status', 'unknown')}"
         )
 
     if payload.get("incident"):
         incident = payload["incident"]
+        text_value = ""
+        incident_updates = incident.get("incident_updates", [])
+        if incident_updates:
+            text_value = incident_updates[0].get("body", "")
         return (
             f"[{timestamp}] Product: {incident.get('name', 'Unknown')}\n"
-            f"Status: {incident.get('status', 'unknown')}"
+            f"Status: {incident.get('status', 'unknown')}\n"
+            f"Text: {text_value}"
         )
 
-    return f"[{timestamp}] Product: Atlassian\nStatus: unknown"
+    return f"[{timestamp}] Product: Atlassian\nStatus: unknown\nText: "
 
 
 def create_app() -> FastAPI:
@@ -97,9 +113,7 @@ def create_app() -> FastAPI:
     @app.post("/webhook", tags=["slack"])
     async def slack_webhook(payload: dict[str, Any]) -> dict[str, Any]:
         append_slack_webhook_log(payload)
-        payload_type = classify_webhook_payload(payload)
-
-        event_type = payload.get("type") if payload_type == "slack" else None
+        event_type = payload.get("type")
 
         # Slack URL verification handshake: echo back the challenge value.
         if event_type == "url_verification":
@@ -110,6 +124,8 @@ def create_app() -> FastAPI:
                     detail="Missing or invalid challenge",
                 )
             return {"challenge": challenge}
+
+        payload_type = classify_webhook_payload(payload)
 
         if payload_type == "slack":
             append_incident_log(format_slack_template(payload))
