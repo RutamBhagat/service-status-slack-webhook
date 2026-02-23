@@ -4,6 +4,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response, status
+from fastapi.responses import PlainTextResponse
 
 SLACK_WEBHOOK_LOG_FILE = Path("webhook_events.log")
 INCIDENT_LOG_FILE = Path("incident.log")
@@ -66,6 +67,12 @@ def format_atlassian_template(payload: dict[str, Any]) -> str:
 
 def create_app() -> FastAPI:
     app = FastAPI()
+
+    @app.get("/", response_class=PlainTextResponse, tags=["incidents"])
+    async def incident_log_view() -> str:
+        if not INCIDENT_LOG_FILE.exists():
+            return ""
+        return INCIDENT_LOG_FILE.read_text(encoding="utf-8")
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
