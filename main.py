@@ -18,6 +18,15 @@ def append_slack_webhook_log(payload: dict[str, Any]) -> None:
         log_file.write("\n")
 
 
+def classify_webhook_payload(payload: dict[str, Any]) -> str:
+    if payload.get("meta") is not None:
+        return "atlassian"
+    elif payload.get("event") and payload.get("event").get("channel_type") is not None:
+        return "slack"
+    else:
+        return "unknown"
+
+
 def create_app() -> FastAPI:
     app = FastAPI()
 
@@ -32,8 +41,9 @@ def create_app() -> FastAPI:
     @app.post("/webhook", tags=["slack"])
     async def slack_webhook(payload: dict[str, Any]) -> dict[str, Any]:
         append_slack_webhook_log(payload)
+        payload_type = classify_webhook_payload(payload)
 
-        event_type = payload.get("type")
+        event_type = payload.get("type") if payload_type == "slack" else None
 
         # Slack URL verification handshake: echo back the challenge value.
         if event_type == "url_verification":
