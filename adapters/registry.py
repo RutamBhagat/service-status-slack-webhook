@@ -24,12 +24,7 @@ INCIDENT_ADAPTERS: dict[str, ProviderAdapter] = {
 
 
 def _extract_host(url: str) -> str:
-    split_url = urlsplit(url)
-    if not split_url.netloc:
-        return ""
-
-    host = split_url.netloc.rsplit("@", maxsplit=1)[-1]
-    return host.split(":", maxsplit=1)[0].lower()
+    return (urlsplit(url).hostname or "").lower()
 
 
 def normalize_incident_url(url: str) -> str:
