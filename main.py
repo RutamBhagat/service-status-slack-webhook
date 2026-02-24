@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import PlainTextResponse
@@ -34,7 +35,6 @@ def extract_incident_block_url(payload: dict[str, Any]) -> str:
     except (KeyError, IndexError, TypeError):
         return ""
 
-
 def create_app() -> FastAPI:
     app = FastAPI()
 
@@ -55,7 +55,9 @@ def create_app() -> FastAPI:
         append_webhook_event_log(payload)
         block_url = extract_incident_block_url(payload)
         if block_url:
-            print(normalize_incident_url(block_url))
+            normalized_url = normalize_incident_url(block_url)
+            response = requests.get(normalized_url)
+            print(response.text)
         event_type = payload.get("type")
 
         # Slack URL verification handshake: echo back the challenge value.
