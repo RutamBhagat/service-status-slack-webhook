@@ -3,4 +3,4 @@ __pycache__/
 .venv/
 .git/
 incident.log
-webhook_events.log
+webhook_events_direct.log

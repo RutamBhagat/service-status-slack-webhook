@@ -83,5 +83,5 @@ No `:8000` is needed in the public URL. Render handles external routing and forw
 
 ## Notes
 
-- `incident.log` and `webhook_events.log` are stored in container filesystem.
+- `incident.log` and `webhook_events_direct.log` are stored in container filesystem.
 - On Render free instances, services can sleep and local files may reset after restart/redeploy.

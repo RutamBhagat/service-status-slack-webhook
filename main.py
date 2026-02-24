@@ -11,7 +11,7 @@ from adapters import normalize_incident_url, parse_incident_content
 
 load_dotenv()
 
-WEBHOOK_EVENTS_LOG_PATH = Path("webhook_events.log")
+WEBHOOK_EVENTS_LOG_PATH = Path("webhook_events_direct.log")
 
 
 def append_webhook_event_log(payload: dict[str, Any]) -> None:
