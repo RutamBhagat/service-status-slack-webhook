@@ -32,12 +32,16 @@ def parse_openai_incident_content(fetched_text: str) -> dict[str, str]:
     payload = OpenAIIncidentResponse.model_validate(json.loads(fetched_text))
     incident = payload.incident
 
-    latest_update: OpenAIUpdate | None = incident.updates[-1] if incident.updates else None
+    latest_update: OpenAIUpdate | None = (
+        incident.updates[-1] if incident.updates else None
+    )
     status_text = incident.status
     timestamp = incident.published_at or datetime.now().isoformat()
 
     if latest_update:
-        status_text = latest_update.message_string or latest_update.to_status or incident.status
+        status_text = (
+            latest_update.message_string or latest_update.to_status or incident.status
+        )
         timestamp = latest_update.published_at or timestamp
 
     return {

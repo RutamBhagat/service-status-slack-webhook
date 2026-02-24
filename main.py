@@ -30,6 +30,7 @@ def extract_incident_block_url(payload: dict[str, Any]) -> str:
     except (KeyError, IndexError, TypeError):
         return ""
 
+
 def create_app() -> FastAPI:
     app = FastAPI()
 

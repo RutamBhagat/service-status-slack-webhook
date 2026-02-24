@@ -4,8 +4,6 @@ from urllib.parse import urlsplit, urlunsplit
 
 from pydantic import BaseModel, Field
 
-CLAUDE_STATUS_PREFIX = "https://status.claude.com/"
-
 
 def map_claude_status_url(url: str) -> str:
     return f"{url}.json"

@@ -3,9 +3,9 @@
 set -u
 
 log_file="./webhook_events_direct.log"
-webhook_url="http://localhost:8000/webhook"
+# webhook_url="http://localhost:8000/webhook"
 # webhook_url="https://service-status-slack-webhook.vercel.app/webhook"
-# webhook_url="https://service-status-slack-webhook.onrender.com/webhook"
+webhook_url="https://service-status-slack-webhook.onrender.com/webhook"
 max_workers=10
 
 if [[ ! -f "$log_file" ]]; then
