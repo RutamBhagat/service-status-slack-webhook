@@ -1,17 +1,26 @@
+import json
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import PlainTextResponse
 
-INCIDENT_LOG_FILE = Path("incident.log")
+load_dotenv()
+
+WEBHOOK_EVENTS_LOG_PATH = Path("webhook_events.log")
 
 
 def append_incident_log(message: str) -> None:
-    with INCIDENT_LOG_FILE.open("a", encoding="utf-8") as log_file:
-        log_file.write(message)
-        log_file.write("\n")
+    print(message, flush=True)
+
+
+def append_webhook_event_log(payload: dict[str, Any]) -> None:
+    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
+    entry = {"timestamp": timestamp, "payload": payload}
+    with WEBHOOK_EVENTS_LOG_PATH.open("a", encoding="utf-8") as file:
+        file.write(f"{json.dumps(entry, ensure_ascii=True)}\n")
 
 
 def classify_webhook_payload(payload: dict[str, Any]) -> str:
@@ -84,9 +93,7 @@ def create_app() -> FastAPI:
 
     @app.get("/", response_class=PlainTextResponse, tags=["incidents"])
     async def incident_log_view() -> str:
-        if not INCIDENT_LOG_FILE.exists():
-            return ""
-        return INCIDENT_LOG_FILE.read_text(encoding="utf-8")
+        return "Logging is enabled to stdout. Check your deployment logs."
 
     @app.get("/health", tags=["health"])
     async def health_check() -> dict[str, str]:
@@ -98,6 +105,7 @@ def create_app() -> FastAPI:
 
     @app.post("/webhook", tags=["slack"])
     async def slack_webhook(payload: dict[str, Any]) -> dict[str, Any]:
+        append_webhook_event_log(payload)
         event_type = payload.get("type")
 
         # Slack URL verification handshake: echo back the challenge value.
