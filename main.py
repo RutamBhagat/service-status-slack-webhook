@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import PlainTextResponse
 
-from adapters import normalize_incident_url
+from adapters import normalize_incident_url, parse_incident_content
 
 load_dotenv()
 
@@ -56,9 +56,9 @@ def create_app() -> FastAPI:
         block_url = extract_incident_block_url(payload)
         if block_url:
             normalized_url = normalize_incident_url(block_url)
-            async with httpx.AsyncClient() as client:
+            async with httpx.AsyncClient(follow_redirects=True) as client:
                 response = await client.get(normalized_url)
-            print(response.text)
+            print(parse_incident_content(normalized_url, response.text))
         event_type = payload.get("type")
 
         # Slack URL verification handshake: echo back the challenge value.
