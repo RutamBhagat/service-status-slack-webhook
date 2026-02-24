@@ -1,5 +1,4 @@
 import json
-from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -16,15 +15,12 @@ WEBHOOK_EVENTS_LOG_PATH = Path("webhook_events.log")
 
 
 def append_webhook_event_log(payload: dict[str, Any]) -> None:
-    timestamp = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
-    entry = {"timestamp": timestamp, "payload": payload}
     with WEBHOOK_EVENTS_LOG_PATH.open("a", encoding="utf-8") as file:
-        file.write(f"{json.dumps(entry, ensure_ascii=True)}\n")
+        file.write(f"{json.dumps(payload, ensure_ascii=True)}\n")
 
 
 def extract_incident_block_url(payload: dict[str, Any]) -> str:
-    data = payload.get("payload", payload)
-    event = data.get("event", {})
+    event = payload.get("event", {})
 
     # For "message_changed", links are inside event.message.
     if event.get("subtype") == "message_changed":
@@ -52,7 +48,7 @@ def create_app() -> FastAPI:
 
     @app.post("/webhook", tags=["slack"])
     async def slack_webhook(payload: dict[str, Any]) -> dict[str, Any]:
-        append_webhook_event_log(payload)
+        # append_webhook_event_log(payload)
         block_url = extract_incident_block_url(payload)
         if block_url:
             normalized_url = normalize_incident_url(block_url)
