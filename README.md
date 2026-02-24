@@ -1,74 +1,78 @@
-# service-status-slack-webhook
+# service status slack webhook
 
-FastAPI webhook receiver for Slack/Statuspage events.
+this app receives status incident events from slack and logs a clean incident summary to stdout.
 
-## Run locally with Docker
+the goal is an event-driven flow for service status updates from providers like openai and claude.
 
-Build:
+## why this exists
+
+- openai status updates are available through an rss feed that a slack channel can subscribe to.
+- a slack app forwards channel events to this webhook.
+- the webhook reads the incident url, fetches provider json, parses the latest status update, and prints a normalized log line.
+- logs are visible in local terminal output and deployment logs on platforms like render or vercel.
+
+## request flow
+
+1. slack sends an event callback to `POST /webhook`.
+2. the app extracts the incident url from the event blocks.
+3. the url is normalized through an adapter registry (`adapters/registry.py`).
+4. the app fetches the incident payload with `httpx`.
+5. a provider parser (`openai` or `claude`) maps the payload into:
+   - provider
+   - product
+   - status text
+   - timestamp
+6. the app prints a formatted incident message to stdout.
+
+the same endpoint also supports slack url verification and returns the challenge response.
+
+## endpoints
+
+- `GET /` simple info message.
+- `GET /health` health json response.
+- `HEAD /health` health check for platform probes.
+- `POST /webhook` slack event callback endpoint.
+
+## project structure
+
+- `main.py` fastapi app, webhook endpoint, url verification, stdout logging.
+- `adapters/registry.py` provider registry, url normalization, common output formatting.
+- `adapters/openai_status.py` openai status url mapping + parser.
+- `adapters/claude_status.py` claude status url mapping + parser.
+- `test.sh` replays saved webhook payloads from `webhook_events_direct.log`.
+- `Dockerfile` container build and uvicorn startup.
+- `render.yaml` render service settings and health check path.
+
+## local run
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+```
+
+app runs on `http://localhost:8000` by default.
+
+## replay webhook payloads for testing
+
+save one raw slack webhook json per line in `webhook_events_direct.log`, then run:
+
+```bash
+bash test.sh
+```
+
+`test.sh` posts each line to `http://localhost:8000/webhook` with concurrent workers.
+
+## docker run
 
 ```bash
 docker build -t service-status-slack-webhook .
+docker run --rm -p 8000:8000 service-status-slack-webhook
 ```
 
-Run:
+## deployment notes
 
-```bash
-docker run --rm -p 8000:8000 -e PORT=8000 service-status-slack-webhook
-```
-
-Verify:
-
-```bash
-curl -i http://localhost:8000/health
-curl -i http://localhost:8000/
-```
-
-Send a webhook test payload:
-
-```bash
-curl -X POST http://localhost:8000/webhook \
-  -H "Content-Type: application/json" \
-  -d '{
-    "event": {
-      "channel_type": "channel",
-      "type": "message",
-      "text": "Status: operational\nEverything is healthy",
-      "username": "Slack"
-    }
-  }'
-```
-
-Then check:
-
-```bash
-curl http://localhost:8000/
-```
-
-## Deploy on Render (Docker)
-
-This repository includes `render.yaml` for an infrastructure-as-code deployment.
-
-1. Push this repo to GitHub.
-2. In Render, create a new Web Service from the repo.
-3. Render detects `render.yaml` and Docker runtime automatically.
-4. Deploy.
-
-After deploy, test:
-
-```bash
-curl -i https://<your-service>.onrender.com/health
-curl -i https://<your-service>.onrender.com/
-```
-
-Webhook URL for integrations:
-
-```text
-https://<your-service>.onrender.com/webhook
-```
-
-No `:8000` is needed in the public URL. Render handles external routing and forwards to the container port via the `PORT` environment variable.
-
-## Notes
-
-- `incident.log` and `webhook_events_direct.log` are stored in container filesystem.
-- On Render free instances, services can sleep and local files may reset after restart/redeploy.
+- docker runtime is configured in `render.yaml`.
+- health checks use `/health`.
+- incident summaries are emitted to stdout, so platform logs are the primary output sink.
