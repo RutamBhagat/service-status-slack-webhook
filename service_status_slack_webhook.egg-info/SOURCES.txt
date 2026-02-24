@@ -1,8 +1,0 @@
-README.md
-main.py
-pyproject.toml
-service_status_slack_webhook.egg-info/PKG-INFO
-service_status_slack_webhook.egg-info/SOURCES.txt
-service_status_slack_webhook.egg-info/dependency_links.txt
-service_status_slack_webhook.egg-info/requires.txt
-service_status_slack_webhook.egg-info/top_level.txt
