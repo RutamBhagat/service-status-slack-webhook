@@ -1,19 +1,17 @@
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Callable
-from urllib.parse import urlsplit, urlunsplit
+from typing import Any
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import PlainTextResponse
 
+from adapters import normalize_incident_url
+
 load_dotenv()
 
 WEBHOOK_EVENTS_LOG_PATH = Path("webhook_events.log")
-OPENAI_STATUS_PREFIX = "https://status.openai.com/"
-OPENAI_STATUS_PROXY_PREFIX = "https://status.openai.com/proxy/status.openai.com/"
-CLAUDE_STATUS_PREFIX = "https://status.claude.com/"
 
 
 def append_webhook_event_log(payload: dict[str, Any]) -> None:
@@ -35,50 +33,6 @@ def extract_incident_block_url(payload: dict[str, Any]) -> str:
         return event["blocks"][0]["elements"][0]["elements"][0]["url"]
     except (KeyError, IndexError, TypeError):
         return ""
-
-
-def _map_openai_status_url(url: str) -> str:
-    if url.startswith(OPENAI_STATUS_PROXY_PREFIX):
-        return url
-    if url.startswith(OPENAI_STATUS_PREFIX):
-        return url.replace(OPENAI_STATUS_PREFIX, OPENAI_STATUS_PROXY_PREFIX, 1)
-    return url
-
-
-def _map_claude_status_url(url: str) -> str:
-    if not url.startswith(CLAUDE_STATUS_PREFIX):
-        return url
-
-    split_url = urlsplit(url)
-    if split_url.path.endswith(".json"):
-        return url
-
-    return urlunsplit(
-        (
-            split_url.scheme,
-            split_url.netloc,
-            f"{split_url.path}.json",
-            split_url.query,
-            split_url.fragment,
-        )
-    )
-
-
-INCIDENT_URL_RULES: dict[str, Callable[[str], str]] = {
-    OPENAI_STATUS_PREFIX: _map_openai_status_url,
-    CLAUDE_STATUS_PREFIX: _map_claude_status_url,
-}
-
-
-def normalize_incident_url(url: str) -> str:
-    if not url:
-        return ""
-
-    for prefix, mapper in INCIDENT_URL_RULES.items():
-        if url.startswith(prefix):
-            return mapper(url)
-
-    return url
 
 
 def create_app() -> FastAPI:
