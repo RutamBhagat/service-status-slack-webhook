@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-import requests
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Response, status
 from fastapi.responses import PlainTextResponse
@@ -56,7 +56,8 @@ def create_app() -> FastAPI:
         block_url = extract_incident_block_url(payload)
         if block_url:
             normalized_url = normalize_incident_url(block_url)
-            response = requests.get(normalized_url)
+            async with httpx.AsyncClient() as client:
+                response = await client.get(normalized_url)
             print(response.text)
         event_type = payload.get("type")
 
