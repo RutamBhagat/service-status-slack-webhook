@@ -5,14 +5,21 @@ from urllib.parse import urlsplit
 from .claude_status import map_claude_status_url, parse_claude_incident_content
 from .openai_status import map_openai_status_url, parse_openai_incident_content
 
-INCIDENT_URL_ADAPTERS: dict[str, Callable[[str], str]] = {
-    "status.openai.com": map_openai_status_url,
-    "status.claude.com": map_claude_status_url,
-}
+ProviderAdapter = dict[
+    str, str | Callable[[str], str] | Callable[[str], dict[str, str]]
+]
 
-INCIDENT_CONTENT_PARSERS: dict[str, Callable[[str], dict[str, str]]] = {
-    "status.openai.com": parse_openai_incident_content,
-    "status.claude.com": parse_claude_incident_content,
+INCIDENT_ADAPTERS: dict[str, ProviderAdapter] = {
+    "status.openai.com": {
+        "provider_name": "OpenAI",
+        "url_adapter": map_openai_status_url,
+        "content_parser": parse_openai_incident_content,
+    },
+    "status.claude.com": {
+        "provider_name": "Claude",
+        "url_adapter": map_claude_status_url,
+        "content_parser": parse_claude_incident_content,
+    },
 }
 
 
@@ -30,8 +37,9 @@ def normalize_incident_url(url: str) -> str:
         return ""
 
     host = _extract_host(url)
-    for host_prefix, adapter in INCIDENT_URL_ADAPTERS.items():
+    for host_prefix, adapter_config in INCIDENT_ADAPTERS.items():
         if host.startswith(host_prefix):
+            adapter = adapter_config["url_adapter"]
             return adapter(url)
 
     return url
@@ -50,21 +58,14 @@ def _format_timestamp(timestamp: str) -> str:
 
 def parse_incident_content(url: str, fetched_text: str) -> str:
     host = _extract_host(url)
-    for host_prefix, parser in INCIDENT_CONTENT_PARSERS.items():
+    for host_prefix, adapter_config in INCIDENT_ADAPTERS.items():
         if host.startswith(host_prefix):
-            try:
-                data = parser(fetched_text)
-                timestamp = _format_timestamp(data.get("timestamp", ""))
-                product = data.get("product", "Unknown")
-                status_text = data.get("status_text", "Unknown")
-                return f"[{timestamp}] Product: {product}\nStatus: {status_text}"
-            except Exception:
-                now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
-                provider_name = "OpenAI" if host_prefix == "status.openai.com" else "Claude"
-                return (
-                    f"[{now}] Product: {provider_name} - Unknown incident\n"
-                    "Status: Could not parse provider response"
-                )
+            parser = adapter_config["content_parser"]
+            data = parser(fetched_text)
+            timestamp = _format_timestamp(data.get("timestamp", ""))
+            product = data.get("product", "Unknown")
+            status_text = data.get("status_text", "Unknown")
+            return f"[{timestamp}] Product: {product}\nStatus: {status_text}"
 
     now = datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S")
     return f"[{now}] Product: Unknown\nStatus: Unable to parse provider payload"
