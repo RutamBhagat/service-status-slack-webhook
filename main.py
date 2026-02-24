@@ -22,7 +22,6 @@ def append_webhook_event_log(payload: dict[str, Any]) -> None:
 def extract_incident_block_url(payload: dict[str, Any]) -> str:
     event = payload.get("event", {})
 
-    # For "message_changed", links are inside event.message.
     if event.get("subtype") == "message_changed":
         event = event.get("message", {})
 
