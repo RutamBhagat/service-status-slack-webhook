@@ -45,9 +45,9 @@ def post_json_line(webhook_url: str, line: str, timeout: int) -> str:
 
 def main() -> int:
     log_file = Path(os.getenv("LOG_FILE", "./webhook_events_direct.log"))
-    # webhook_url = "http://localhost:8000/webhook"
+    webhook_url = "http://localhost:8000/webhook"
     # webhook_url = "https://service-status-slack-webhook.vercel.app/webhook"
-    webhook_url = "https://service-status-slack-webhook.onrender.com/webhook"
+    # webhook_url = "https://service-status-slack-webhook.onrender.com/webhook"
 
     try:
         concurrency = get_env_int("CONCURRENCY", 10)
